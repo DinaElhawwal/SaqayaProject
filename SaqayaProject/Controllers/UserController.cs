@@ -48,7 +48,8 @@ namespace SaqayaProject.Controllers
                 firstName = userDTO.firstName,
                 lastName = userDTO.lastName,
                 email = userDTO.email,
-                marketingConsent = userDTO.marketingConsent
+                marketingConsent = userDTO.marketingConsent,
+                AccessToken =accessToken
             };
 
            
@@ -68,21 +69,22 @@ namespace SaqayaProject.Controllers
             {
                 return BadRequest("Id and accessToken are required.");
             }
-
-            // Validate accessToken
-            if (!ValidateAccessToken(accessToken, id))
-            {
-                return Unauthorized("Invalid accessToken.");
-            }
-
             // Fetch the user from the database
-            var user = _dbContext.users.Find(id);
+            var user = _dbContext.users.FirstOrDefault(x => x.Id == id);
 
             // Check if the user exists
             if (user == null)
             {
                 return NotFound("User not found.");
             }
+
+            // Validate accessToken
+            if (user.AccessToken!=accessToken)
+            {
+                return Unauthorized("Invalid accessToken.");
+            }
+
+           
 
             // If marketing consent is false, omit the email property
             if (!user.marketingConsent)
@@ -140,39 +142,6 @@ namespace SaqayaProject.Controllers
             return tokenHandler.WriteToken(token);
         }
 
-
-
-
-
-        // to validate JWT Token
-       
-        private bool ValidateAccessToken(string token, string userId)
-        {
-            var key = Encoding.ASCII.GetBytes(_configuration.GetSection("Jwt:Secret").Value) ;
-
-            var tokenHandler = new JwtSecurityTokenHandler();
-            try
-            {
-                tokenHandler.ValidateToken(token, new TokenValidationParameters
-                {
-                    ValidateIssuerSigningKey = true,
-                    IssuerSigningKey = new SymmetricSecurityKey(key),
-                    ValidateIssuer = false,
-                    ValidateAudience = false,
-                    ClockSkew = TimeSpan.Zero,
-                }, out SecurityToken validatedToken);
-
-                var jwtToken = (JwtSecurityToken)validatedToken;
-                var userIdClaim = jwtToken.Claims.First(x => x.Type == ClaimTypes.Name).Value;
-
-                return userIdClaim == userId;
-            }
-            catch
-            {
-                return false;
-            }
-        }
-     
        
 
 
